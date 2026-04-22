@@ -1,54 +1,321 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>WFC Generation Dashboard</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Wave Function Collapse</title>
     <style>
-        body { font-family: sans-serif; padding: 20px; max-width: 900px; margin: auto; background: #f4f4f9; }
-        .panel { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 20px;}
-        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 20px; }
-        .card { background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); text-align: center; }
-        .images-container { display: flex; justify-content: space-around; align-items: center; margin-top: 10px; }
-        .img-box { width: 100px; height: 100px; border: 1px dashed #ccc; display: flex; align-items: center; justify-content: center; overflow: hidden; }
-        img { max-width: 100%; max-height: 100%; image-rendering: pixelated; }
-        .badge { padding: 4px 8px; border-radius: 12px; font-size: 0.8em; font-weight: bold; }
-        .pending { background: #ffeaa7; color: #d35400; }
-        .complete { background: #55efc4; color: #00b894; }
-        .error { background: #ff7675; color: white; }
-        .timed-out { background: #ffeaa7; color: #d35400; border: 1px solid #d35400; }
+        :root {
+            --bg: #f7f7fb;
+            --surface: #ffffff;
+            --border: #e5e7eb;
+            --text: #111827;
+            --muted: #6b7280;
+            --accent: #6366f1;
+            --accent-hover: #4f46e5;
+            --accent-soft: #eef2ff;
+            --shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.04), 0 1px 3px rgba(16, 24, 40, 0.06);
+            --shadow-md: 0 4px 6px -1px rgba(16, 24, 40, 0.06), 0 2px 4px -1px rgba(16, 24, 40, 0.04);
+            --radius: 10px;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+                         Oxygen, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+            margin: 0;
+            padding: 40px 20px;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.5;
+        }
+
+        .container {
+            max-width: 960px;
+            margin: 0 auto;
+        }
+
+        header {
+            margin-bottom: 32px;
+        }
+
+        header h1 {
+            font-size: 2rem;
+            font-weight: 700;
+            margin: 0 0 6px;
+            letter-spacing: -0.02em;
+        }
+
+        header .subtitle {
+            color: var(--muted);
+            margin: 0;
+        }
+
+        .panel {
+            background: var(--surface);
+            padding: 24px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow-sm);
+            margin-bottom: 28px;
+        }
+
+        .panel h2 {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin: 0 0 16px;
+        }
+
+        form {
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr auto;
+            gap: 16px;
+            align-items: end;
+        }
+
+        @media (max-width: 700px) {
+            form { grid-template-columns: 1fr 1fr; }
+            form button { grid-column: 1 / -1; }
+        }
+
+        .field {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .field label {
+            font-size: 0.85rem;
+            font-weight: 500;
+            color: var(--muted);
+        }
+
+        input[type="file"],
+        input[type="number"],
+        select {
+            font: inherit;
+            padding: 9px 11px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            background: var(--surface);
+            color: var(--text);
+            transition: border-color 0.15s, box-shadow 0.15s;
+        }
+
+        input[type="number"]:focus,
+        select:focus,
+        input[type="file"]:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px var(--accent-soft);
+        }
+
+        button {
+            font: inherit;
+            font-weight: 600;
+            background: var(--accent);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 10px 20px;
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+
+        button:hover:not(:disabled) { background: var(--accent-hover); }
+        button:disabled { opacity: 0.55; cursor: not-allowed; }
+
+        .section-header {
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            margin: 0 0 16px;
+        }
+
+        .section-header h2 {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin: 0;
+        }
+
+        .refresh-indicator {
+            font-size: 0.8rem;
+            color: var(--muted);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .pulse {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #10b981;
+            opacity: 0.4;
+            transition: opacity 0.2s;
+        }
+
+        .pulse.active { opacity: 1; }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+            gap: 16px;
+        }
+
+        .card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 16px;
+            box-shadow: var(--shadow-sm);
+            transition: box-shadow 0.15s, transform 0.15s;
+        }
+
+        .card:hover {
+            box-shadow: var(--shadow-md);
+            transform: translateY(-1px);
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .card-id {
+            font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+            font-size: 0.85rem;
+            color: var(--text);
+        }
+
+        .card-meta {
+            font-size: 0.8rem;
+            color: var(--muted);
+            margin-bottom: 12px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .images {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .img-box {
+            flex: 1;
+            aspect-ratio: 1;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            background: #fafafa;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        .img-box img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            image-rendering: pixelated;
+            image-rendering: crisp-edges;
+        }
+
+        .img-box small { color: var(--muted); font-size: 0.75rem; }
+
+        .arrow {
+            color: var(--muted);
+            font-size: 1.25rem;
+            flex: 0 0 auto;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 999px;
+            font-size: 0.72rem;
+            font-weight: 600;
+            letter-spacing: 0.02em;
+            text-transform: uppercase;
+        }
+
+        .badge.pending    { background: #fef3c7; color: #92400e; }
+        .badge.complete   { background: #d1fae5; color: #065f46; }
+        .badge.error      { background: #fee2e2; color: #991b1b; }
+        .badge.timed-out  { background: #fef3c7; color: #92400e; border: 1px solid #f59e0b; }
+
+        .empty-state {
+            text-align: center;
+            padding: 48px 20px;
+            color: var(--muted);
+            background: var(--surface);
+            border: 1px dashed var(--border);
+            border-radius: var(--radius);
+        }
+
+        .empty-state .emoji { font-size: 2rem; margin-bottom: 8px; }
     </style>
 </head>
 <body>
-    <div class="panel">
-        <h2>Submit a New WFC Job (Fun?!)</h2>
-        <form id="uploadForm">
-            <label>Seed Image (Max 128x128):</label>
-            <input type="file" id="seed_image" accept="image/png, image/jpeg" required>
-            
-            <label style="margin-left:15px;">Patch Size:</label>
-            <input type="number" id="patch_size" value="3" min="2" max="5" style="width:40px;">
-            
-            <label style="margin-left:15px;">Output Size:</label>
-            <select id="output_size">
-                <option value="64">64 x 64</option>
-                <option value="128" selected>128 x 128</option>
-                <option value="256">256 x 256</option>
-                <option value="512">512 x 512</option>
-                <option value="1024">1024 x 1024</option>
-            </select>
-            
-            <button type="submit" style="margin-left:15px;">Add to Queue</button>
-        </form>
-    </div>
+    <div class="container">
+        <header>
+            <h1>Wave Function Collapse</h1>
+            <p class="subtitle">Upload a small seed image — the worker learns its adjacency rules and generates a larger tileable image.</p>
+        </header>
 
-    <h3>Recent Jobs</h3>
-    <div class="grid" id="jobsGrid">
+        <div class="panel">
+            <h2>New job</h2>
+            <form id="uploadForm">
+                <div class="field">
+                    <label for="seed_image">Seed image (max 128&times;128)</label>
+                    <input type="file" id="seed_image" accept="image/png, image/jpeg" required>
+                </div>
+
+                <div class="field">
+                    <label for="patch_size">Patch size</label>
+                    <input type="number" id="patch_size" value="3" min="2" max="5">
+                </div>
+
+                <div class="field">
+                    <label for="output_size">Output size</label>
+                    <select id="output_size">
+                        <option value="64" selected>64 &times; 64</option>
+                        <option value="128">128 &times; 128</option>
+                        <option value="256">256 &times; 256</option>
+                        <option value="512">512 &times; 512</option>
+                        <option value="1024">1024 &times; 1024</option>
+                    </select>
+                </div>
+
+                <button type="submit">Add to queue</button>
+            </form>
         </div>
 
+        <div class="section-header">
+            <h2>Recent jobs</h2>
+            <div class="refresh-indicator">
+                <span class="pulse" id="pulse"></span>
+                <span id="refreshLabel">auto-refreshing</span>
+            </div>
+        </div>
+
+        <div id="jobsContainer"></div>
+    </div>
+
     <script>
-        // 1. Handle the form submission
-        document.getElementById('uploadForm').addEventListener('submit', async (e) => {
+        const form = document.getElementById('uploadForm');
+        const container = document.getElementById('jobsContainer');
+        const pulse = document.getElementById('pulse');
+
+        form.addEventListener('submit', async (e) => {
             e.preventDefault();
-            const btn = e.target.querySelector('button');
+            const btn = form.querySelector('button');
+            const originalText = btn.innerText;
             btn.innerText = "Uploading...";
             btn.disabled = true;
 
@@ -57,50 +324,75 @@
             formData.append('patch_size', document.getElementById('patch_size').value);
             formData.append('output_size', document.getElementById('output_size').value);
 
-            await fetch('/upload', { method: 'POST', body: formData });
-            
-            e.target.reset();
-            btn.innerText = "Add to Queue";
-            btn.disabled = false;
-            fetchJobs(); // Instantly refresh the board
+            try {
+                const res = await fetch('/upload', { method: 'POST', body: formData });
+                if (!res.ok) {
+                    const err = await res.json().catch(() => ({ error: 'Upload failed' }));
+                    alert(err.error || 'Upload failed');
+                }
+            } finally {
+                form.reset();
+                btn.innerText = originalText;
+                btn.disabled = false;
+                fetchJobs();
+            }
         });
 
-        // 2. Fetch and render the dashboard
-        async function fetchJobs() {
-            const res = await fetch('/jobs');
-            const jobs = await res.json();
-            
-            const grid = document.getElementById('jobsGrid');
-            grid.innerHTML = ''; 
-
-            jobs.forEach(job => {
-                // NEW: Convert "TIMED OUT" to "timed-out" for the CSS class
-                let safeClass = job.status.toLowerCase().replace(' ', '-');
-                let statusBadge = `<span class="badge ${safeClass}">${job.status}</span>`;
-                
-                let outputHtml = job.status === 'COMPLETE' 
-                    ? `<a href="${job.output_url}" target="_blank"><img src="${job.output_url}"></a>` 
-                    : `<small style="color:#888;">Generating...</small>`;
-                grid.innerHTML += `
-                    <div class="card">
-                        <div><strong>${job.id}</strong></div>
-                        <div style="font-size: 0.8em; color: #666; margin: 5px 0;">
-                            Grid: ${job.output_size}x${job.output_size} | Patch: ${job.patch_size}
-                        </div>
-                        ${statusBadge}
-                        <div class="images-container">
-                            <div class="img-box"><img src="${job.input_url}" title="Seed"></div>
-                            <span>➔</span>
-                            <div class="img-box">${outputHtml}</div>
-                        </div>
-                    </div>
-                `;
-            });
+        function renderEmpty() {
+            container.innerHTML = `
+                <div class="empty-state">
+                    <div class="emoji">&#x1F30A;</div>
+                    <div>No jobs yet. Upload a seed image to get started.</div>
+                </div>`;
         }
 
-        // Poll every 3 seconds
+        function renderJobs(jobs) {
+            if (!jobs.length) return renderEmpty();
+
+            const html = jobs.map(job => {
+                const safeClass = job.status.toLowerCase().replace(/ /g, '-');
+                const badge = `<span class="badge ${safeClass}">${job.status}</span>`;
+                const outputContent = job.status === 'COMPLETE'
+                    ? `<a href="${job.output_url}" target="_blank" rel="noopener"><img src="${job.output_url}" alt="Generated"></a>`
+                    : `<small>generating&hellip;</small>`;
+                const ts = job.timestamp || '';
+
+                return `
+                    <div class="card">
+                        <div class="card-header">
+                            <span class="card-id">${job.id}</span>
+                            ${badge}
+                        </div>
+                        <div class="card-meta">
+                            <span>${job.output_size}&times;${job.output_size} &middot; patch ${job.patch_size}</span>
+                            <span>${ts}</span>
+                        </div>
+                        <div class="images">
+                            <div class="img-box"><img src="${job.input_url}" alt="Seed"></div>
+                            <span class="arrow">&rarr;</span>
+                            <div class="img-box">${outputContent}</div>
+                        </div>
+                    </div>`;
+            }).join('');
+
+            container.innerHTML = `<div class="grid">${html}</div>`;
+        }
+
+        async function fetchJobs() {
+            pulse.classList.add('active');
+            try {
+                const res = await fetch('/jobs');
+                const jobs = await res.json();
+                renderJobs(jobs);
+            } catch (err) {
+                console.error('Failed to fetch jobs:', err);
+            } finally {
+                setTimeout(() => pulse.classList.remove('active'), 300);
+            }
+        }
+
         setInterval(fetchJobs, 3000);
-        fetchJobs(); // Run once immediately on load
+        fetchJobs();
     </script>
 </body>
 </html>

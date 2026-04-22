@@ -30,7 +30,7 @@ def upload_image():
         
     file = request.files['seed_image']
     patch_size = int(request.form.get('patch_size', 3))
-    output_size = int(request.form.get('output_size', 100)) # NEW!
+    output_size = int(request.form.get('output_size', 64))
     
     image_bytes = file.read()
     try:
