@@ -36,16 +36,17 @@ data "google_project" "project" {
 }
 
 # ------------------------------------------------------------------------
-# ENABLE REQUIRED APIS
+# 0. ENABLE REQUIRED APIS
 # ------------------------------------------------------------------------
 locals {
   services = [
     "appengine.googleapis.com",      # To manage App Engine deployments
-    "cloudbuild.googleapis.com",     # Used by App Engine to build the code
+    "cloudbuild.googleapis.com",     # Used by App Engine and Cloud Run to build code
     "run.googleapis.com",            # To manage Cloud Run deployments
     "firestore.googleapis.com",      # For the database
     "pubsub.googleapis.com",         # For the message queue
     "iamcredentials.googleapis.com", # CRITICAL for Workload Identity Federation
+    "artifactregistry.googleapis.com"# CRITICAL for Cloud Run source deployments
   ]
 }
 
@@ -53,8 +54,6 @@ resource "google_project_service" "enabled_apis" {
   for_each           = toset(local.services)
   project            = var.project_id
   service            = each.key
-  
-  # Prevents Terraform from accidentally disabling these APIs if you run 'destroy'
   disable_on_destroy = false 
 }
 
@@ -65,12 +64,14 @@ resource "google_storage_bucket" "wfc_inputs" {
   name          = "wfc-inputs-${var.project_id}"
   location      = "us-west1"
   force_destroy = true
+  depends_on    = [google_project_service.enabled_apis]
 }
 
 resource "google_storage_bucket" "wfc_outputs" {
   name          = "wfc-outputs-${var.project_id}"
   location      = "us-west1"
   force_destroy = true
+  depends_on    = [google_project_service.enabled_apis]
 }
 
 # Make the output bucket publicly readable for the web frontend
@@ -94,13 +95,15 @@ resource "google_firestore_database" "wfc_db" {
   name        = "wfc-db"
   location_id = "us-west1"
   type        = "FIRESTORE_NATIVE"
+  depends_on  = [google_project_service.enabled_apis]
 }
 
 # ------------------------------------------------------------------------
 # 3. PUB/SUB MESSAGE QUEUE
 # ------------------------------------------------------------------------
 resource "google_pubsub_topic" "wfc_queue" {
-  name = "wfc-work-queue"
+  name       = "wfc-work-queue"
+  depends_on = [google_project_service.enabled_apis]
 }
 
 # ------------------------------------------------------------------------
@@ -109,6 +112,7 @@ resource "google_pubsub_topic" "wfc_queue" {
 resource "google_service_account" "pubsub_invoker" {
   account_id   = "wfc-pubsub-invoker"
   display_name = "Pub/Sub Cloud Run Invoker ID"
+  depends_on   = [google_project_service.enabled_apis]
 }
 
 resource "google_cloud_run_v2_service_iam_member" "invoker_binding" {
@@ -117,6 +121,7 @@ resource "google_cloud_run_v2_service_iam_member" "invoker_binding" {
   name     = "wfc-worker" 
   role     = "roles/run.invoker"
   member   = "serviceAccount:${google_service_account.pubsub_invoker.email}"
+  depends_on = [google_project_service.enabled_apis]
 }
 
 # Push Subscription
@@ -142,6 +147,7 @@ resource "google_pubsub_subscription" "wfc_push_sub" {
 resource "google_service_account" "github_actions" {
   account_id   = "github-actions-sa"
   display_name = "GitHub Actions Deployer"
+  depends_on   = [google_project_service.enabled_apis]
 }
 
 # Grant the Service Account the necessary deployment roles
@@ -151,7 +157,8 @@ locals {
     "roles/run.admin",
     "roles/iam.serviceAccountUser",
     "roles/cloudbuild.builds.editor",
-    "roles/storage.admin"
+    "roles/storage.admin",
+    "roles/artifactregistry.admin" # Required for Cloud Run source deployments
   ]
 }
 
@@ -166,6 +173,7 @@ resource "google_project_iam_member" "github_actions_roles" {
 resource "google_iam_workload_identity_pool" "github_pool" {
   workload_identity_pool_id = "github-pool"
   display_name              = "GitHub Actions Pool"
+  depends_on                = [google_project_service.enabled_apis]
 }
 
 # Create the OIDC Provider in the Pool
@@ -180,7 +188,7 @@ resource "google_iam_workload_identity_pool_provider" "github_provider" {
     "attribute.repository" = "assertion.repository"
   }
 
-  # This acts as the firewall rule. It MUST use 'assertion'
+  # Strictly limit token generation to the specific GitHub repository
   attribute_condition = "assertion.repository == '${var.github_repo}'"
 
   oidc {

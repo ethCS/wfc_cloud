@@ -78,7 +78,7 @@ def extract_patterns_and_rules(image_array, N=3):
     return unique_patterns, weights, rules
 
 # ------------------------------------------------------------------------
-# 2. WAVE FUNCTION COLLAPSE (Numba JIT-Compiled)
+# 2. WAVE FUNCTION COLLAPSE (Numba JIT)
 # ------------------------------------------------------------------------
 # Uses per-cell compatibility counts so each propagation event is O(P) rather
 # than O(P^2), and Shannon entropy H = log(Σw) - Σ(w·log w)/Σw for cell
