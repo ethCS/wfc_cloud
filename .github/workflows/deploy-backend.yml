@@ -1,0 +1,41 @@
+name: Deploy Worker to Cloud Run
+
+on:
+  push:
+    branches: [ main ]
+    # ONLY trigger if something in the worker folder changes
+    paths: [ 'worker/**' ]
+
+jobs:
+  deploy-worker:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: 'read'
+      id-token: 'write' 
+
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+
+    - name: Authenticate to Google Cloud
+      id: auth
+      uses: google-github-actions/auth@v2
+      with:
+        # REPLACE THESE TWO VALUES
+        workload_identity_provider: 'projects/850788220206/locations/global/workloadIdentityPools/github-pool/providers/github-provider'
+        service_account: 'github-actions-sa@cloud-493319.iam.gserviceaccount.com'
+
+    - name: Set up Cloud SDK
+      uses: google-github-actions/setup-gcloud@v2
+
+    - name: Deploy to Cloud Run
+      run: |
+        cd worker
+        gcloud run deploy wfc-worker \
+          --source . \
+          --region us-west1 \
+          --no-allow-unauthenticated \
+          --memory 8Gi \
+          --cpu 4 \
+          --timeout 3600 \
+          --set-env-vars PYTHONUNBUFFERED=1

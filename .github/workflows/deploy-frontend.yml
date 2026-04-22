@@ -1,0 +1,36 @@
+name: Deploy Frontend to App Engine
+
+on:
+  push:
+    branches: [ main ]
+    # ONLY trigger if something in the frontend folder changes
+    paths: [ 'frontend/**' ]
+
+jobs:
+  deploy-frontend:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: 'read'
+      id-token: 'write' # Strictly required for Workload Identity Federation
+
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+
+    - name: Authenticate to Google Cloud
+      id: auth
+      uses: google-github-actions/auth@v2
+      with:
+        # REPLACE THESE TWO VALUES
+        workload_identity_provider: 'projects/850788220206/locations/global/workloadIdentityPools/github-pool/providers/github-provider'
+        service_account: 'github-actions-sa@cloud-493319.iam.gserviceaccount.com'
+
+    - name: Deploy to App Engine
+      id: deploy
+      uses: google-github-actions/deploy-appengine@v2
+      with:
+        working_directory: 'frontend'
+        deliverables: 'app.yaml'
+        
+    - name: Test Output
+      run: echo "Deployed to ${{ steps.deploy.outputs.url }}"
