@@ -89,17 +89,7 @@ resource "google_storage_bucket_iam_member" "public_read_inputs" {
 }
 
 # ------------------------------------------------------------------------
-# 2. FIRESTORE DATABASE
-# ------------------------------------------------------------------------
-resource "google_firestore_database" "wfc_db" {
-  name        = "wfc-db"
-  location_id = "us-west1"
-  type        = "FIRESTORE_NATIVE"
-  depends_on  = [google_project_service.enabled_apis]
-}
-
-# ------------------------------------------------------------------------
-# 3. PUB/SUB MESSAGE QUEUE
+# 2. PUB/SUB MESSAGE QUEUE
 # ------------------------------------------------------------------------
 resource "google_pubsub_topic" "wfc_queue" {
   name       = "wfc-work-queue"
@@ -107,7 +97,7 @@ resource "google_pubsub_topic" "wfc_queue" {
 }
 
 # ------------------------------------------------------------------------
-# 4. CLOUD RUN SECURITY (ZERO-TRUST)
+# 3. CLOUD RUN SECURITY (ZERO-TRUST)
 # ------------------------------------------------------------------------
 resource "google_service_account" "pubsub_invoker" {
   account_id   = "wfc-pubsub-invoker"
@@ -141,7 +131,7 @@ resource "google_pubsub_subscription" "wfc_push_sub" {
 }
 
 # ------------------------------------------------------------------------
-# 5. GITHUB ACTIONS CI/CD (WORKLOAD IDENTITY FEDERATION)
+# 4. GITHUB ACTIONS CI/CD (WORKLOAD IDENTITY FEDERATION)
 # ------------------------------------------------------------------------
 # Create the Service Account for GitHub Actions
 resource "google_service_account" "github_actions" {
